@@ -43,6 +43,8 @@ kvmmake(void)
   // the highest virtual address in the kernel.
   kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
 
+
+
   // allocate and map a kernel stack for each process.
   proc_mapstacks(kpgtbl);
   
@@ -449,3 +451,29 @@ copyinstr(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max)
     return -1;
   }
 }
+
+void
+vmprint(pagetable_t pg)
+{
+  printf("page table %p\n",pg);
+  printchild(pg);
+
+}
+
+void
+printchild(pagetable_t pg)
+{
+  for(int i = 0; i < 512; i++){
+    pte_t pte1 = pg[i];
+    if(pte1 & PTE_V){
+      // this PTE points to a lower-level page table.
+      uint64 child = PTE2PA(pte1);
+      printf("%d:pte:%p pa:%p\n",i,pte1,child); 
+      if((pte1 & (PTE_R|PTE_W|PTE_X) )== 0){
+        printchild((pagetable_t)child);
+      }
+    }
+  }
+}
+
+

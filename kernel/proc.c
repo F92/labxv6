@@ -132,6 +132,12 @@ found:
     return 0;
   }
 
+  if((p->us = (struct usyscall *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -140,11 +146,14 @@ found:
     return 0;
   }
 
+
+
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  p->us->pid = p->pid;
 
   return p;
 }
@@ -157,10 +166,13 @@ freeproc(struct proc *p)
 {
   if(p->trapframe)
     kfree((void*)p->trapframe);
+  if(p->us)
+    kfree((void*)p->us);
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
+  p->us = 0;
   p->sz = 0;
   p->pid = 0;
   p->parent = 0;
@@ -202,6 +214,13 @@ proc_pagetable(struct proc *p)
     return 0;
   }
 
+  if(mappages(pagetable, USYSCALL, PGSIZE,
+              (uint64)(p->us), PTE_R | PTE_U) < 0){
+    uvmunmap(pagetable, USYSCALL, 1, 0);
+    uvmfree(pagetable, 0);
+    return 0;
+  }
+
   return pagetable;
 }
 
@@ -212,6 +231,7 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
 {
   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
   uvmunmap(pagetable, TRAPFRAME, 1, 0);
+  uvmunmap(pagetable, USYSCALL,1,0);
   uvmfree(pagetable, sz);
 }
 
@@ -685,4 +705,36 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+void
+ugetid(int pid){
+  pagetable_t up = (pagetable_t)kalloc;
+  char *pa = (char *)up;
+  kvmmap(up, USYSCALL, (uint64)pa, PGSIZE, PTE_R | PTE_W);
+  struct usyscall *us;
+  us = (struct usyscall *)USYSCALL;
+  (*us).pid = pid;
+}
+
+int
+pgaccess(uint64 base,int len,uint64 mask)
+{
+  int kernelmask = 0;
+  pagetable_t pagetable3 = myproc()->pagetable;
+  uint64 pte3 = pagetable3[PX(2, base)];
+  pagetable_t pagetable2 = (pagetable_t)PTE2PA(pte3);
+  uint64 pte2 = pagetable2[PX(1, base)];
+  pagetable_t pagetable1 = (pagetable_t)PTE2PA(pte2);
+  pte_t *pte1;
+  pte1 = &pagetable1[PX(0, base)];
+  for(int i=0;i<len;i++){
+    if(pte1[i] & PTE_A){
+      kernelmask = kernelmask | (1L << i);
+      pte1[i] = pte1[i] & (~PTE_A);
+    }
+  }
+  printf("%p\n",kernelmask);
+  copyout(myproc()->pagetable,mask,(char *)&kernelmask,sizeof(kernelmask));
+  return 0;
 }
