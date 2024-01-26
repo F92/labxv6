@@ -125,17 +125,13 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
-  for(int i=0;i<(PHYSTOP - KERNBASE)/PGSIZE;i++){
-    p->use[i] = 0;
-  }
-
+  
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
   }
-
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -143,7 +139,6 @@ found:
     release(&p->lock);
     return 0;
   }
-
   // Set up new context to start executing at forkret,
   // which returns to user space.
   memset(&p->context, 0, sizeof(p->context));
@@ -196,7 +191,6 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
-
   // map the trapframe page just below the trampoline page, for
   // trampoline.S.
   if(mappages(pagetable, TRAPFRAME, PGSIZE,
@@ -205,7 +199,6 @@ proc_pagetable(struct proc *p)
     uvmfree(pagetable, 0);
     return 0;
   }
-
   return pagetable;
 }
 
