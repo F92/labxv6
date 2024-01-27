@@ -66,12 +66,14 @@ threetest()
   }
 
   pid1 = fork();
+  //printf("%d\n",pid1);
   if(pid1 < 0){
     printf("fork failed\n");
     exit(-1);
   }
   if(pid1 == 0){
     pid2 = fork();
+    //printf("%d\n",pid2);
     if(pid2 < 0){
       printf("fork failed");
       exit(-1);
@@ -79,8 +81,10 @@ threetest()
     if(pid2 == 0){
       for(char *q = p; q < p + (sz/5)*4; q += 4096){
         *(int*)q = getpid();
+        //printf("%d %d\n",*(int*)q,getpid());
       }
       for(char *q = p; q < p + (sz/5)*4; q += 4096){
+        //printf("%d %d\n",*(int*)q,getpid());
         if(*(int*)q != getpid()){
           printf("wrong content\n");
           exit(-1);
@@ -190,7 +194,6 @@ main(int argc, char *argv[])
   threetest();
 
   filetest();
-
   printf("ALL COW TESTS PASSED\n");
 
   exit(0);

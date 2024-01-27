@@ -85,7 +85,7 @@ usertrap(void)
           uvmunmap(p->pagetable,i,1,1);
           mem = kalloc();
           memmove(mem, (char*)pa, PGSIZE);
-          mappages(p->pagetable, i, PGSIZE, pa, flags);
+          mappages(p->pagetable, i, PGSIZE, (uint64)mem, flags);
         }
       }
     }

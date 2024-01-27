@@ -60,18 +60,14 @@ kfree(void *pa)
   if(use[(uint64)pa/PGSIZE] == 0)
   {
     memset(pa, 1, PGSIZE);
-
     r = (struct run*)pa;
-
     acquire(&kmem.lock);
     r->next = kmem.freelist;
     kmem.freelist = r;
     release(&kmem.lock);
   }else if(use[(uint64)pa/PGSIZE]-1 == 0){
     memset(pa, 1, PGSIZE);
-
     r = (struct run*)pa;
-
     acquire(&kmem.lock);
     r->next = kmem.freelist;
     kmem.freelist = r;
